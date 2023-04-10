@@ -39,6 +39,7 @@
 
       - [✓] Reading and backlog views.
       - [✓] Adding new books to reading-log and backlog.
+      - [ ] Restructuring menu system to include submenus for each view.
       - [ ] Removing books from reading-log and backlog.
       - [ ] Editing individual book entries in reading-log and backlog.
       - [ ] Sorting by variables for the reading and backlog views.
