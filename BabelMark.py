@@ -37,6 +37,21 @@ def load_logs():
     )
 
 
+def edit_book(readinglog, backlog, reading_csv, backlog_csv):
+    # Instead of getting title and author and setting values
+    # through system dialogue, consider passing these in a
+    # container; this will allow a streamlined change_page()
+    # function which will have its own command, as this will be
+    # a very common operation in Reading View for Progress Mode.
+    pass
+
+
+def remove_book(readinglog, backlog, reading_csv, backlog_csv):
+    # Take title and author; search both dataframes
+    # and drop match from its corresponding dataframe.
+    pass
+
+
 # ----------------------------------------------------------------------------------------------------------------------
 # PROGRESS-MODE FUNCTIONS:
 
@@ -50,7 +65,7 @@ def get_progress(rl_row):
     empty_block = u"\u2591"
     percentage = round((rl_row.current_page / rl_row.pages) * 100, 2)
     progress_bar = block*math.ceil(percentage) + empty_block*(100 - math.ceil(percentage))
-    return f"'{rl_row['title']}' by {' & '.join(rl_row['author'].split('/'))}: {percentage}%\n{progress_bar}"
+    return f"'{rl_row['title']}' by {' & '.join(rl_row['author'].split('/'))}: {percentage}%\n{progress_bar}\n"
 
 
 def display_progress_view(readinglog):
@@ -58,7 +73,7 @@ def display_progress_view(readinglog):
     Takes the reading log dataframe, and prints the string
     returned from get_progress for each row, sorted by priority.
     '''
-    readinglog.sort_values(by='priority').apply(get_progress, axis=1).apply(print)
+    readinglog.apply(get_progress, axis=1).apply(print)
 
 
 def add_to_reading(readinglog, backlog, reading_csv, backlog_csv):
@@ -75,13 +90,17 @@ def add_to_reading(readinglog, backlog, reading_csv, backlog_csv):
     print('Please supply the following data:')
     title = input('Title: ')
     author = input('Author: ')
-    if title in backlog.title and author in backlog.author:
+    print(backlog.title, backlog.author, backlog.title.values)
+    if title in backlog.title.values and author in backlog.author.values:
         book = backlog[(backlog.title == title) & (backlog.author == author)]
+        book_index = book.index[0]
+        book = book.to_dict()
         book['priority'] = len(readinglog)
         book['current_page'] = 1
         book['date_started'] = str(pd.to_datetime('today').date())
+        book = pd.DataFrame(book)
         readinglog = pd.concat([readinglog, book], axis=0)
-        backlog.drop(book['priority'], axis='rows')
+        backlog.drop(book_index, axis='rows', inplace=True)
         readinglog.set_index('priority').to_csv(reading_csv)
         backlog.set_index('priority').to_csv(backlog_csv)
     else:
@@ -129,7 +148,7 @@ def display_backlog_view(backlog):
     returned from get_backlog for each row, sorted
     by priority.
     '''
-    backlog.sort_values(by='priority').apply(get_backlog, axis=1).apply(print)
+    backlog.apply(get_backlog, axis=1).apply(print)
 
 
 def add_to_backlog(backlog, backlog_csv):
@@ -172,38 +191,43 @@ def add_to_backlog(backlog, backlog_csv):
 
 def start_reading_view(r_df, b_df, r_csv, b_csv):
 
-    reading_menu = '''
-                .-. .-. .-. .-. .-. . . .-.   . . .-. .-. . . . 
-                |(  |-  |-| |  ) |  |\| |..   | |  |  |-  | | | 
-                ' ' `-' ` ' `-' `-' ' ` `-'   `.' `-' `-' `.'.' 
-   *---=---=---=---=---=---=---=---=---=---=---=---=---=---=---=---=---=---=---*
+    reading_menu = lambda m: f'''
+    READING VIEW ({'Progress' if m else 'Backlog'} mode)
+   *---=---=---=---=---=---=---=---=---=---=---=---=---=---=---=---=---=---=---=---=---=---*
     Sort by ...  -> s       Remove book  -> rb      Toggle progress or backlog mode    -> m
     Start book   -> sb      Edit book    -> eb      Add to backlog -> b      Main menu -> q
 '''
     usr_input = ''
     reading_mode = True
+    sort_modes = {
+        'p': 'priority',
+        't': 'title',
+        'a': 'author',
+        'l': 'pages'
+    }
+    sort_mode = 'p'
+
     while usr_input != 'q':
-
-        clear_terminal()
-        print(reading_menu)
-
         match usr_input:
             case 's':
-                print('Sort by ()')
+                print('''
+Sort by ...
+priority -> p title -> t
+author   -> a length -> l
+'''
+                      )
+                sort_mode = input('Enter command: ')
             case 'sb':
                 add_to_reading(r_df, b_df, r_csv, b_csv)
                 r_df, b_df, r_csv, b_csv = load_logs()
             case 'rb':
-
+                remove_book(r_df, b_df, r_csv, b_csv)
                 r_df, b_df, r_csv, b_csv = load_logs()
             case 'eb':
-
+                edit_book(r_df, b_df, r_csv, b_csv)
                 r_df, b_df, r_csv, b_csv = load_logs()
             case 'm':
-                if reading_mode:
-                    reading_mode = False
-                else:
-                    reading_mode = True
+                reading_mode = False if reading_mode else True
             case 'b':
                 add_to_backlog(b_df, b_csv)
                 r_df, b_df, r_csv, b_csv = load_logs()
@@ -212,30 +236,29 @@ def start_reading_view(r_df, b_df, r_csv, b_csv):
             case other:
                 pass
 
+        clear_terminal()
+        print(reading_menu(reading_mode))
         if reading_mode:
-            display_progress_view(r_df)
+            display_progress_view(r_df.sort_values(by=sort_modes[sort_mode]))
         else:
-            display_backlog_view(b_df)
+            display_backlog_view(b_df.sort_values(by=sort_modes[sort_mode]))
 
         usr_input = input('Enter a command: ')
-
 
 
 # ----------------------------------------------------------------------------------------------------------------------
 # MAIN LOOP:
 
 main_menu = '''
-
-    ██████╗  █████╗ ██████╗ ███████╗██╗     ███╗   ███╗ █████╗ ██████╗ ██╗  ██╗
-    ██╔══██╗██╔══██╗██╔══██╗██╔════╝██║     ████╗ ████║██╔══██╗██╔══██╗██║ ██╔╝
-    ██████╔╝███████║██████╔╝█████╗  ██║     ██╔████╔██║███████║██████╔╝█████╔╝ 
-    ██╔══██╗██╔══██║██╔══██╗██╔══╝  ██║     ██║╚██╔╝██║██╔══██║██╔══██╗██╔═██╗ 
-    ██████╔╝██║  ██║██████╔╝███████╗███████╗██║ ╚═╝ ██║██║  ██║██║  ██║██║  ██╗
-    ╚═════╝ ╚═╝  ╚═╝╚═════╝ ╚══════╝╚══════╝╚═╝     ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝
-   *---=---=---=---=---=---=---=---=---=---=---=---=---=---=---=---=---=---=---*
-    Reading View  -> rv      Set default logs -> dl      Quit -> q
-    Stats View    -> sv      Start book       -> sb
-    Category View -> cv      About            -> a
+        ██████   █████  ██████  ███████ ██      ███    ███  █████  ██████  ██   ██ 
+        ██   ██ ██   ██ ██   ██ ██      ██      ████  ████ ██   ██ ██   ██ ██  ██  
+        ██████  ███████ ██████  █████   ██      ██ ████ ██ ███████ ██████  █████   
+        ██   ██ ██   ██ ██   ██ ██      ██      ██  ██  ██ ██   ██ ██   ██ ██  ██  
+        ██████  ██   ██ ██████  ███████ ███████ ██      ██ ██   ██ ██   ██ ██   ██ 
+       *---=---=---=---=---=---=---=---=---=---=---=---=---=---=---=---=---=---=---*
+        Reading View  -> rv      Set default logs -> dl      Quit -> q
+        Stats View    -> sv      Start book       -> sb
+        Category View -> cv      About            -> a
 '''
 
 usr_input = ''
