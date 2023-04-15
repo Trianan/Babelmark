@@ -37,19 +37,63 @@ def load_logs():
     )
 
 
-def edit_book(readinglog, backlog, reading_csv, backlog_csv):
+def edit_book(readinglog, backlog, reading_csv, backlog_csv, args_list=[]):
     # Instead of getting title and author and setting values
     # through system dialogue, consider passing these in a
     # container; this will allow a streamlined change_page()
     # function which will have its own command, as this will be
     # a very common operation in Reading View for Progress Mode.
-    pass
+    if args_list:
+        title, author, key, val = args_list
+    else:
+        print('Please supply the following data...')
+        title = input('Title: ')
+        author = input('Author: ')
+
+    if title in readinglog.title.values and author in readinglog.author.values:
+        book = readinglog[(readinglog.title == title) & (readinglog.author == author)]
+        book_found = 'readinglog'
+        print('Book found in reading log.')
+
+    elif title in backlog.title.values and author in backlog.author.values:
+        book = backlog[(backlog.title == title) & (backlog.author == author)]
+        book_found = 'backlog'
+        print('Book found in backlog.')
+    else:
+        book_found = None
+
+    if book_found:
+        if not args_list:
+            key = input('Trait to modify: ')
+            val = input('New value: ')
+
+        if key in book.columns.values:
+            print(f"Former value of {key}: {book[key]}")
+            eval(book_found).at[book.index.values[0], key] = val
+            print(f"Current value of {key}: {book[key]}")
+        else:
+            print('Invalid key in book: \n', book)
+            input('press any key then ENTER: ')
+
+        if book_found == 'backlog':
+            backlog.set_index('priority').to_csv(backlog_csv)
+        elif book_found == 'readinglog':
+            readinglog.set_index('priority').to_csv(reading_csv)
 
 
 def remove_book(readinglog, backlog, reading_csv, backlog_csv):
-    # Take title and author; search both dataframes
-    # and drop match from its corresponding dataframe.
+
     pass
+
+
+def update_current_page(readinglog, backlog, reading_csv, backlog_csv):
+    print('Please supply the following data...')
+    title = input('Title: ')
+    author = input('Author: ')
+    new_current_page = input('New current page: ')
+    edit_book(readinglog, backlog, reading_csv, backlog_csv, [title, author, 'current_page', new_current_page])
+
+
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -63,7 +107,7 @@ def get_progress(rl_row):
     '''
     block = u"\u2588"
     empty_block = u"\u2591"
-    percentage = round((rl_row.current_page / rl_row.pages) * 100, 2)
+    percentage = round((int(rl_row.current_page) / int(rl_row.pages)) * 100, 2)
     progress_bar = block*math.ceil(percentage) + empty_block*(100 - math.ceil(percentage))
     return f"'{rl_row['title']}' by {' & '.join(rl_row['author'].split('/'))}: {percentage}%\n{progress_bar}\n"
 
@@ -194,8 +238,8 @@ def start_reading_view(r_df, b_df, r_csv, b_csv):
     reading_menu = lambda m: f'''
     READING VIEW ({'Progress' if m else 'Backlog'} mode)
    *---=---=---=---=---=---=---=---=---=---=---=---=---=---=---=---=---=---=---=---=---=---*
-    Sort by ...  -> s       Remove book  -> rb      Toggle progress or backlog mode    -> m
-    Start book   -> sb      Edit book    -> eb      Add to backlog -> b      Main menu -> q
+    Sort by ...  -> s       Remove book  -> rb      Toggle progress or backlog mode      -> m
+    Start book   -> sb      Edit book    -> eb      Add to backlog -> b      Update page -> p
 '''
     usr_input = ''
     reading_mode = True
@@ -225,6 +269,9 @@ author   -> a length -> l
                 r_df, b_df, r_csv, b_csv = load_logs()
             case 'eb':
                 edit_book(r_df, b_df, r_csv, b_csv)
+                r_df, b_df, r_csv, b_csv = load_logs()
+            case 'p':
+                update_current_page(r_df, b_df, r_csv, b_csv)
                 r_df, b_df, r_csv, b_csv = load_logs()
             case 'm':
                 reading_mode = False if reading_mode else True
