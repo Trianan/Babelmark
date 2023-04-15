@@ -49,7 +49,21 @@ def edit_book(readinglog, backlog, reading_csv, backlog_csv):
 def remove_book(readinglog, backlog, reading_csv, backlog_csv):
     # Take title and author; search both dataframes
     # and drop match from its corresponding dataframe.
-    pass
+    print('Which book would you like to remove?')
+    title = input('Title: ')
+    author = input('Author: ')
+    print(backlog.title, backlog.author, backlog.title.values)
+    if title in backlog.title.values and author in backlog.author.values:
+        backlog = backlog.loc[(backlog.title != title) & (backlog.author != author)]
+
+        print(f'"{title}" by: {author} successfully removed from backlog.')
+    elif title in readinglog.title.values and author in readinglog.author.values:
+        readinglog = readinglog.loc[(readinglog.title != title) & (readinglog.author != author)]
+        print(f'"{title}" by: {author} successfully removed from reading log.')
+    else:
+        ('Error: Book not found in backlog or reading log.')
+    readinglog.set_index('priority').to_csv(reading_csv)
+    backlog.set_index('priority').to_csv(backlog_csv)
 
 
 # ----------------------------------------------------------------------------------------------------------------------
