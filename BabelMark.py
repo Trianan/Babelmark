@@ -90,13 +90,12 @@ def remove_book(readinglog, backlog, reading_csv, backlog_csv):
     print(backlog.title, backlog.author, backlog.title.values)
     if title in backlog.title.values and author in backlog.author.values:
         backlog = backlog.loc[(backlog.title != title) & (backlog.author != author)]
-
         print(f'"{title}" by: {author} successfully removed from backlog.')
     elif title in readinglog.title.values and author in readinglog.author.values:
         readinglog = readinglog.loc[(readinglog.title != title) & (readinglog.author != author)]
         print(f'"{title}" by: {author} successfully removed from reading log.')
     else:
-        ('Error: Book not found in backlog or reading log.')
+        print('Error: Book not found in backlog or reading log.')
     readinglog.set_index('priority').to_csv(reading_csv)
     backlog.set_index('priority').to_csv(backlog_csv)
 
@@ -124,7 +123,11 @@ def get_progress(rl_row):
     empty_block = u"\u2591"
     percentage = round((int(rl_row.current_page) / int(rl_row.pages)) * 100, 2)
     progress_bar = block*math.ceil(percentage) + empty_block*(100 - math.ceil(percentage))
-    return f"'{rl_row['title']}' by {' & '.join(rl_row['author'].split('/'))}: {percentage}%\n{progress_bar}\n"
+    return (
+        f"'{rl_row['title']}' by {' & '.join(rl_row['author'].split('/'))}:" + 
+        f" {percentage}%    Current page: {rl_row['current_page']} / {rl_row['pages']}\n" + 
+        f"\n{progress_bar}\n"
+    )
 
 
 def display_progress_view(readinglog):
